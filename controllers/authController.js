@@ -11,6 +11,18 @@ const signToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
+const createAndSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  return res.status(statusCode).json({
+    status: 'sucess',
+    token,
+    data: {
+      user,
+    },
+  });
+};
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -20,15 +32,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     passwordChangedAt: req.body.passwordChangedAt,
   });
 
-  const token = signToken(newUser._id);
-
-  return res.status(201).json({
-    status: 'sucess',
-    token,
-    data: {
-      user: newUser,
-    },
-  });
+  createAndSendToken(newUser, 201, res);
 });
 
 exports.login = async (req, res, next) => {
@@ -45,12 +49,7 @@ exports.login = async (req, res, next) => {
 
   if (!correct) return next(new AppError('Incorrect email or password', 401));
 
-  const token = signToken(user._id);
-
-  res.status(200).json({
-    status: 'sucess',
-    token,
-  });
+  createAndSendToken(user, 200, res);
 };
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -158,10 +157,20 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
   await user.save();
 
-  const token = signToken(user._id);
+  createAndSendToken(user, 200, res);
+});
 
-  res.status(200).json({
-    status: 'sucess',
-    token,
-  });
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select('+password');
+
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password)))
+    return next(new AppError('Password is incorrect', 401));
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+
+  await user.save();
+
+  // User.findByIdAndUpdate will not work here as intended
+  createAndSendToken(user, 200, res);
 });
