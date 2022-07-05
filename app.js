@@ -9,6 +9,7 @@ const AppError = require('./utils/appError');
 const globalErrorhandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
+const hpp = require('hpp');
 
 const app = express();
 //Middleware
@@ -37,6 +38,20 @@ app.use(mongoSanitize());
 
 //data sanitazation against XSS
 app.use(xss());
+
+// remove duplicate query params
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'ratingsAverage',
+      'ratingsQuantity',
+      'maxGroupSize',
+      'difficulty',
+      'price',
+    ],
+  })
+);
 
 // middleware for serving static file
 app.use(express.static(`${__dirname}/public`));
