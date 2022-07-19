@@ -19,7 +19,7 @@ const filterObj = (obj, ...alowFields) =>
   );
 
 exports.getAllUsers = catchAsync(async (req, res) => {
-  const pageAndLimt = {
+  const pageAndLimit = {
     page: +req.query.page || 1,
     limit: +req.query.limit || 100,
   };
@@ -32,7 +32,7 @@ exports.getAllUsers = catchAsync(async (req, res) => {
     filterQuery(excludeFieldsAndIntegrateOps)(fieldsToExclude),
     sortbyQuery(req.query.sort),
     selectbyField(req.query.fields),
-    paginate(pageAndLimt)
+    paginate(pageAndLimit)
   );
 
   const users = await addFeatures(User);
