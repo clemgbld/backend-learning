@@ -117,8 +117,19 @@ const toursSchema = new mongoose.Schema(
   }
 );
 
+// toursSchema.index({ price: 1 });
+toursSchema.index({ price: 1, ratingsAverage: -1 });
+toursSchema.index({ slug: 1 });
+
 toursSchema.virtual('durationWeek').get(function () {
   return this.duration / 7;
+});
+
+// Virtual populate
+toursSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
 });
 
 // Document Middleware: runs before .save() and .create() but not on inser many

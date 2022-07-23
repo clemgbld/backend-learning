@@ -1,15 +1,7 @@
-const { pipe } = require('ramda');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-
+const factory = require('./handlerFactory');
 const User = require('../models/userModel');
-const {
-  selectbyField,
-  paginate,
-  sortbyQuery,
-  formatQuery,
-  filterQuery,
-} = require('../utils/apiFeatures');
 
 const filterObj = (obj, ...alowFields) =>
   alowFields.reduce(
@@ -18,35 +10,10 @@ const filterObj = (obj, ...alowFields) =>
     {}
   );
 
-exports.getAllUsers = catchAsync(async (req, res) => {
-  const pageAndLimit = {
-    page: +req.query.page || 1,
-    limit: +req.query.limit || 100,
-  };
-
-  const fieldsToExclude = ['page', 'sort', 'limit', 'fields'];
-
-  const excludeFieldsAndIntegrateOps = formatQuery(req.query);
-
-  const addFeatures = pipe(
-    filterQuery(excludeFieldsAndIntegrateOps)(fieldsToExclude),
-    sortbyQuery(req.query.sort),
-    selectbyField(req.query.fields),
-    paginate(pageAndLimit)
-  );
-
-  const users = await addFeatures(User);
-
-  // SEND RESPONSE
-  res.status(200).json({
-    status: 'success',
-    requestedAt: req.requestTime,
-    results: users.length,
-    data: {
-      users,
-    },
-  });
-});
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   if (req.body.password || req.body.passwordConfirm) {
@@ -82,27 +49,10 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.createUser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'this route is not yet defined',
-  });
-};
-exports.getUser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'this route is not yet defined',
-  });
-};
-exports.updateUser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'this route is not yet defined',
-  });
-};
-exports.deleteUser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'this route is not yet defined',
-  });
-};
+exports.getAllUsers = factory.getAll(User);
+
+exports.createUser = factory.createOne(User);
+
+exports.getUser = factory.getOne(User);
+exports.updateUser = factory.updateOne(User);
+exports.deleteUser = factory.deleteOne(User);

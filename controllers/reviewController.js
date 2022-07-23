@@ -1,31 +1,12 @@
-const { pipe } = require('ramda');
 const catchAsync = require('../utils/catchAsync');
 const Review = require('../models/reviewModel');
-const {
-  selectbyField,
-  paginate,
-  sortbyQuery,
-  formatQuery,
-  filterQuery,
-} = require('../utils/apiFeatures');
+const factory = require('./handlerFactory');
 
 exports.getAllReviews = catchAsync(async (req, res) => {
-  const pageAndLimit = {
-    page: +req.query.page || 1,
-    limit: +req.query.limit || 100,
-  };
-  const fieldsToExclude = ['page', 'sort', 'limit', 'fields'];
+  let filter = {};
+  if (req.params.tourId) filter = { tour: req.params.tourId };
 
-  const excludeFieldsAndIntegrateOps = formatQuery(req.query);
-
-  const addFeatures = pipe(
-    filterQuery(excludeFieldsAndIntegrateOps)(fieldsToExclude),
-    sortbyQuery(req.query.sort),
-    selectbyField(req.query.fields),
-    paginate(pageAndLimit)
-  );
-
-  const reviews = await addFeatures(Review);
+  const reviews = await Review.find(filter);
 
   res.status(200).json({
     status: 'success',
@@ -37,13 +18,14 @@ exports.getAllReviews = catchAsync(async (req, res) => {
   });
 });
 
-exports.createReview = catchAsync(async (req, res, next) => {
-  const newReview = await Review.create(req.body);
+exports.setTourUserIds = (req, res, next) => {
+  // Allow nested routes
+  if (!req.body.tour) req.body.tour = req.params.tourId;
+  if (!req.body.user) req.body.user = req.user.id;
+  next();
+};
 
-  res.status(201).json({
-    status: 'success',
-    data: {
-      review: newReview,
-    },
-  });
-});
+exports.getReview = factory.getOne(Review);
+exports.createReview = factory.createOne(Review);
+exports.deleteReview = factory.deleteOne(Review);
+exports.updateReview = factory.updateOne(Review);
