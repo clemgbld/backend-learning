@@ -8,6 +8,8 @@ const {
   createTour,
   aliasTopTour,
   getMonthlyPlan,
+  getToursWithin,
+  getDistances,
 } = require('../controllers/tourControler');
 const { protect, restrictTo } = require('../controllers/authController');
 
@@ -37,5 +39,11 @@ router
   .patch(protect, restrictTo('admin', 'lead-guide'), updateTour)
   .get(getSpecificTour)
   .delete(protect, restrictTo('admin', 'lead-guide'), deleteTour);
+
+router.route('/distances/:latlng/unit/:unit').get(getDistances);
+
+router
+  .route('/tours-within/:distance/center/:latlng/unit/:unit')
+  .get(getToursWithin);
 
 module.exports = router;

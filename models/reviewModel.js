@@ -46,6 +46,8 @@ const reviewSchema = new mongoose.Schema(
 //   next();
 // });
 
+reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
+
 reviewSchema.pre(/^find/, function (next) {
   this.populate({
     path: 'user',
@@ -68,6 +70,13 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
     },
   ]);
 
+  if (stats.length === 0) {
+    return await Tour.findByIdAndUpdate(tourId, {
+      ratingsQuantity: 0,
+      ratingsAverage: 4.5,
+    });
+  }
+
   await Tour.findByIdAndUpdate(tourId, {
     ratingsQuantity: stats[0].nRatings,
     ratingsAverage: stats[0].avgRating,
@@ -76,6 +85,16 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
 
 reviewSchema.post('save', function () {
   this.constructor.calcAverageRatings(this.tour);
+});
+
+reviewSchema.pre(/^findOneAnd/, async function (next) {
+  this.r = await this.findOne();
+  next();
+});
+
+reviewSchema.post(/^findOneAnd/, async function () {
+  // await this.findOne(); does not work here the query have already been executed
+  await this.r.constructor.calcAverageRatings(this.r.tour);
 });
 
 const Review = mongoose.model('Review', reviewSchema);
