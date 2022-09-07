@@ -50,6 +50,8 @@ exports.signup = catchAsync(async (req, res, next) => {
 exports.login = async (req, res, next) => {
   const { email, password } = req.body;
 
+  console.log(req.body);
+
   if (!email || !password)
     return next(new AppError('Please provide email in password', 400));
 
@@ -64,14 +66,26 @@ exports.login = async (req, res, next) => {
   createAndSendToken(user, 200, res);
 };
 
+exports.logout = async (req, res) => {
+  res.cookie('jwt', 'logged-out', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  res.status(200).json({ status: 'sucess' });
+};
+
 exports.protect = catchAsync(async (req, res, next) => {
   if (
-    !req.headers.authorization ||
-    !req.headers.authorization.startsWith('Bearer')
+    req.headers.authorization &&
+    !req.headers.authorization.startsWith('Bearer') &&
+    !req.cookies.jwt
   )
     return next(new AppError('You are not logged in !', 401));
 
-  const token = req.headers.authorization.split(' ')[1];
+  const token = req.cookies.jwt
+    ? req.cookies.jwt
+    : req.headers.authorization.split(' ')[1];
 
   if (!token)
     return next(
@@ -94,6 +108,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   req.user = currentUser;
+  res.locals.user = currentUser;
 
   next();
 });
@@ -186,3 +201,26 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   // User.findByIdAndUpdate will not work here as intended
   createAndSendToken(user, 200, res);
 });
+
+exports.isLoggedIn = async (req, res, next) => {
+  if (!req.cookies.jwt) return next();
+
+  try {
+    const decoded = await promisify(jwt.verify)(
+      req.cookies.jwt,
+      process.env.JWT_SECRET
+    );
+
+    const currentUser = await User.findById(decoded?.id);
+
+    if (!currentUser) return next();
+
+    if (currentUser.changedPasswordAfter(decoded.iat)) return next();
+
+    res.locals.user = currentUser;
+
+    next();
+  } catch (err) {
+    next();
+  }
+};

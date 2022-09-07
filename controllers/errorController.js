@@ -25,30 +25,52 @@ const handleValidationDb = (err) => {
 const handleJWTError = () =>
   new AppError('Invalid token. Please log in again.', 401);
 
-const sendErrorDev = (err, res) =>
-  res.status(err.statusCode).json({
-    status: err.status,
-    error: err,
-    message: err.message,
-    stack: err.stack,
+const sendErrorDev = (err, req, res) => {
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      error: err,
+      message: err.message,
+      stack: err.stack,
+    });
+  }
+
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong',
+    msg: err.message,
   });
+};
 
 const handleJtwExpiredError = () =>
   new AppError('your token has expired. Please log in again.', 401);
 
-const sendErrorProd = (err, res) => {
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
+const sendErrorProd = (err, req, res) => {
+  if (req.originalUrl.startsWith('/api')) {
+    if (err.isOperational) {
+      return res.status(err.statusCode).json({
+        status: err.status,
+        message: err.message,
+      });
+    }
+
+    console.error('ERROR (☞ﾟヮﾟ)☞', err);
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Something went wrong!',
     });
   }
 
-  console.error('ERROR (☞ﾟヮﾟ)☞', err);
+  if (err.isOperational) {
+    return res.status(err.statusCode).render('error', {
+      title: 'Something went wrong',
+      msg: err.message,
+    });
+  }
 
-  res.status(500).json({
-    status: 'error',
-    message: 'Something went wrong!',
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong',
+    msg: 'Please try again later',
   });
 };
 
@@ -57,22 +79,23 @@ module.exports = (err, req, res, next) => {
 
   err.status = err.status || 'error';
 
-  if (process.env.NODE_ENV === 'development') return sendErrorDev(err, res);
+  if (process.env.NODE_ENV === 'development')
+    return sendErrorDev(err, req, res);
 
   if (err.name === 'CastError')
-    return sendErrorProd(handleCastErrorDb(err), res);
+    return sendErrorProd(handleCastErrorDb(err), req, res);
 
   if (err.code === 11000)
-    return sendErrorProd(handleDuplicateFieldNameDb(err), res);
+    return sendErrorProd(handleDuplicateFieldNameDb(err), req, res);
 
   if (err.name === 'ValidationError')
-    return sendErrorProd(handleValidationDb(err), res);
+    return sendErrorProd(handleValidationDb(err), req, res);
 
   if (err.name === 'JsonWebTokenError')
-    return sendErrorProd(handleJWTError(), res);
+    return sendErrorProd(handleJWTError(), req, res);
 
   if (err.name === 'TokenExpiredError')
-    return sendErrorProd(handleJtwExpiredError(), res);
+    return sendErrorProd(handleJtwExpiredError(), req, res);
 
-  sendErrorProd(err, res);
+  sendErrorProd(err, req, res);
 };

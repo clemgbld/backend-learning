@@ -6,7 +6,7 @@ const User = require('../models/userModel');
 const filterObj = (obj, ...alowFields) =>
   alowFields.reduce(
     (newobj, field) =>
-      obj[field] ? (newobj = { ...newobj, [field]: obj[field] }) : newobj,
+      obj[field] ? { ...newobj, [field]: obj[field] } : newobj,
     {}
   );
 

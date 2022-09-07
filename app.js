@@ -5,14 +5,14 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
-
+const cookieParser = require('cookie-parser');
+const hpp = require('hpp');
 const AppError = require('./utils/appError');
 const globalErrorhandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
 const viewRouter = require('./routes/viewRoutes');
-const hpp = require('hpp');
 
 const app = express();
 
@@ -22,7 +22,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //Middleware
 // SET SECURITUY HTTP HEADERS
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -40,6 +45,8 @@ app.use('/api', limiter);
 
 // middleware for json post requests
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // data sanitazation against no SQL injection
 app.use(mongoSanitize());
@@ -66,13 +73,16 @@ app.use(
 // custom middleware
 app.use((req, res, next) => {
   console.log('Hello from the middleware');
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', true);
   next();
 });
 
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-
+  console.log(req.cookies);
   next();
 });
 
